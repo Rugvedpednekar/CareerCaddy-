@@ -1,0 +1,18 @@
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+.nav-link { display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0.75rem; border-radius:0.5rem; color:#424754; transition:all .15s ease; }
+.nav-link:hover { background:#e2e8f8; color:#151c27; }
+.nav-link.active { color:#0058be; font-weight:700; background:#f0f3ff; border-right:4px solid #0058be; }
+.cc-card { background:#fff; border:1px solid #c2c6d6; border-radius:0.75rem; }
+.cc-input { width:100%; border:1px solid #c2c6d6; border-radius:0.5rem; background:#fff; color:#151c27; font-size:14px; }
+.cc-input:focus { outline:none; box-shadow:0 0 0 2px #0058be; border-color:transparent; }
+.cc-button { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; border-radius:.5rem; padding:.5rem .85rem; font-weight:500; font-size:13px; transition:all .15s ease; }
+.cc-button-primary { background:#0058be; color:white; }
+.cc-button-primary:hover { background:#2170e4; }
+.cc-button-secondary { background:white; border:1px solid #c2c6d6; color:#151c27; }
+.cc-button-secondary:hover { background:#f0f3ff; }
+.cc-button-danger { color:#ba1a1a; border:1px solid #ffdad6; background:#fff; }
+.cc-button-danger:hover { background:#ffdad6; }
+.status-badge { display:inline-flex; align-items:center; border-radius:9999px; padding:.25rem .5rem; font-size:11px; font-weight:600; border:1px solid transparent; }
+.custom-scrollbar::-webkit-scrollbar { width:6px; height:6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background:#c2c6d6; border-radius:20px; }
+@media (max-width: 767px) { .nav-link.active { border-right:0; } }

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>CareerCaddy AI - Dashboard</title>
+
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Geist:wght@400&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: { extend: {
+    colors: {
+      "surface": "#f9f9ff", "background": "#f9f9ff", "surface-container-lowest": "#ffffff",
+      "surface-container-low": "#f0f3ff", "surface-container": "#e7eefe", "surface-container-high": "#e2e8f8",
+      "surface-container-highest": "#dce2f3", "on-surface": "#151c27", "on-background": "#151c27",
+      "on-surface-variant": "#424754", "outline": "#727785", "outline-variant": "#c2c6d6",
+      "primary": "#0058be", "primary-container": "#2170e4", "on-primary": "#ffffff",
+      "on-primary-container": "#fefcff", "primary-fixed": "#d8e2ff", "on-primary-fixed": "#001a42",
+      "on-primary-fixed-variant": "#004395", "secondary": "#585f67", "tertiary": "#924700",
+      "tertiary-fixed": "#ffdcc6", "tertiary-fixed-dim": "#ffb786", "error": "#ba1a1a",
+      "error-container": "#ffdad6", "on-error-container": "#93000a"
+    },
+    borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+    spacing: { "sidebar-width": "260px", "container-max": "1280px", gutter: "24px", "unit-xs": "4px", "unit-sm": "8px", "unit-md": "16px", "unit-lg": "24px", "unit-xl": "48px" },
+    fontFamily: { "body-md": ["Inter"], "headline-lg": ["Inter"], "headline-md": ["Inter"], "label-md": ["Inter"], "code-sm": ["Geist"] },
+    fontSize: {
+      "headline-lg": ["32px", { lineHeight: "40px", fontWeight: "600" }],
+      "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+      "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+      "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+      "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+      "code-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }]
+    }
+  }}
+}
+</script>
+<link href="/assets/styles.css" rel="stylesheet"/>
+
+</head>
+<body class="bg-background text-on-background min-h-screen flex font-body-md text-body-md">
+
+<aside class="hidden md:flex w-sidebar-width h-screen fixed left-0 top-0 bg-surface border-r border-outline-variant flex-col py-unit-md z-50">
+  <div class="px-gutter mb-unit-lg flex items-center gap-3">
+    <div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold">C</div>
+    <div>
+      <h1 class="font-headline-md text-headline-md font-bold text-primary">CareerCaddy AI</h1>
+      <p class="font-label-md text-label-md text-on-surface-variant">Productivity Assistant</p>
+    </div>
+  </div>
+  <div class="px-gutter mb-unit-md">
+    <button data-open-import class="w-full bg-primary text-on-primary py-2 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
+      <span class="material-symbols-outlined text-[18px]">add</span> New Application
+    </button>
+  </div>
+  <nav class="flex-1 px-unit-sm space-y-1 overflow-y-auto">
+    <a data-nav="dashboard" class="nav-link" href="/dashboard.html"><span class="material-symbols-outlined">dashboard</span><span>Dashboard</span></a>
+    <a data-nav="jobs" class="nav-link" href="/jobs.html"><span class="material-symbols-outlined">work</span><span>Job Tracker</span></a>
+    <a data-nav="applications" class="nav-link" href="/applications.html"><span class="material-symbols-outlined">assignment</span><span>Applications</span></a>
+    <a data-nav="review" class="nav-link" href="/review.html"><span class="material-symbols-outlined">fact_check</span><span>Review Queue</span></a>
+    <a data-nav="resumes" class="nav-link" href="/resumes.html"><span class="material-symbols-outlined">description</span><span>Resumes</span></a>
+  </nav>
+  <div class="px-unit-sm pt-unit-md border-t border-outline-variant">
+    <a data-nav="profile" class="nav-link" href="/profile.html"><span class="material-symbols-outlined">account_circle</span><span>Profile</span></a>
+    <a data-nav="settings" class="nav-link" href="/settings.html"><span class="material-symbols-outlined">settings</span><span>Settings</span></a>
+  </div>
+</aside>
+
+<main class="flex-1 md:ml-sidebar-width flex flex-col min-h-screen" data-active-nav="dashboard">
+
+<header class="h-16 px-gutter flex justify-between items-center bg-surface border-b border-outline-variant sticky top-0 z-40">
+  <div class="md:hidden flex items-center gap-2">
+    <div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold">C</div>
+    <h1 class="font-headline-md text-headline-md font-bold text-primary">CareerCaddy AI</h1>
+  </div>
+  <div class="hidden md:flex items-center bg-surface-container-low rounded-full px-4 py-2 border border-outline-variant w-96">
+    <span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+    <input id="global-search" class="bg-transparent border-none outline-none text-body-md font-body-md w-full text-on-surface placeholder:text-outline focus:ring-0" placeholder="Search jobs, applications..." type="text"/>
+  </div>
+  <div class="flex items-center gap-4">
+    <a href="/review.html" class="text-on-surface-variant hover:text-primary transition-all duration-200"><span class="material-symbols-outlined">notifications</span></a>
+    <div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant bg-surface-container-high flex items-center justify-center text-primary font-semibold">A</div>
+  </div>
+</header>
+
+
+    <div class="p-gutter max-w-container-max mx-auto w-full flex-1 space-y-unit-lg pb-24">
+      <div class="flex justify-between items-end mb-6">
+        <div><h2 class="font-headline-lg text-headline-lg text-on-surface">Good Morning</h2><p class="font-body-lg text-body-lg text-on-surface-variant">Here's the status of your job search pipeline.</p></div>
+        <button id="init-db" class="cc-button cc-button-secondary"><span class="material-symbols-outlined text-sm">database</span>Init DB</button>
+      </div>
+      <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="stats-grid"></section>
+      <section class="cc-card p-6">
+        <h3 class="font-headline-md text-headline-md text-on-surface mb-6">Today's Application Pipeline</h3>
+        <div class="relative flex items-center justify-between w-full overflow-x-auto py-2">
+          <div class="absolute top-1/2 left-0 w-full h-1 bg-surface-container-high -translate-y-1/2 z-0 rounded-full"></div>
+          <div class="absolute top-1/2 left-0 w-[65%] h-1 bg-primary -translate-y-1/2 z-0 rounded-full"></div>
+          <template id="pipeline-step"><div class="relative z-10 flex flex-col items-center gap-2 min-w-24"><div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-sm"><span class="material-symbols-outlined">check</span></div><span class="font-label-md text-label-md text-on-surface text-center whitespace-nowrap"></span></div></template>
+          <div class="relative z-10 flex flex-col items-center gap-2 min-w-24"><div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center"><span class="material-symbols-outlined">search</span></div><span class="font-label-md text-label-md">Found</span></div>
+          <div class="relative z-10 flex flex-col items-center gap-2 min-w-24"><div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center"><span class="material-symbols-outlined">analytics</span></div><span class="font-label-md text-label-md">Scored</span></div>
+          <div class="relative z-10 flex flex-col items-center gap-2 min-w-28"><div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center"><span class="material-symbols-outlined">task_alt</span></div><span class="font-label-md text-label-md">Ready</span></div>
+          <div class="relative z-10 flex flex-col items-center gap-2 min-w-28"><div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center border-2 border-white ring-2 ring-primary"><span class="material-symbols-outlined">sync</span></div><span class="font-label-md text-label-md text-primary font-bold">In Progress</span></div>
+          <div class="relative z-10 flex flex-col items-center gap-2 min-w-28 opacity-70"><div class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant flex items-center justify-center"><span class="material-symbols-outlined">warning</span></div><span class="font-label-md text-label-md">Review</span></div>
+          <div class="relative z-10 flex flex-col items-center gap-2 min-w-28 opacity-70"><div class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface-variant border border-outline-variant flex items-center justify-center"><span class="material-symbols-outlined">send</span></div><span class="font-label-md text-label-md">Submitted</span></div>
+        </div>
+      </section>
+      <section>
+        <h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">psychology</span>AI Recommendations</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="md:col-span-2 cc-card bg-gradient-to-br from-surface-container-lowest to-surface-container-low p-6 flex flex-col justify-between">
+            <div><div class="w-12 h-12 rounded-lg bg-tertiary-fixed-dim text-tertiary flex items-center justify-center mb-4"><span class="material-symbols-outlined text-[28px]">fact_check</span></div><h4 id="review-title" class="font-headline-md text-headline-md text-on-surface mb-2">Review prepared applications</h4><p class="font-body-md text-body-md text-on-surface-variant mb-6 max-w-lg">CareerCaddy prepares applications, but final submission always stays in your hands.</p></div>
+            <div class="flex items-center justify-between mt-auto pt-4 border-t border-outline-variant"><span class="font-label-md text-label-md text-on-surface-variant">Human review required</span><a href="/review.html" class="cc-button cc-button-primary">Review Now</a></div>
+          </div>
+          <div class="space-y-6">
+            <div class="cc-card p-5"><div class="flex items-center gap-2 mb-3 text-secondary"><span class="material-symbols-outlined">upload_file</span><span class="font-label-md text-label-md uppercase">Document Missing</span></div><h4 class="font-body-lg text-body-lg font-semibold">Upload target resumes</h4><a class="cc-button cc-button-secondary mt-4 w-full" href="/resumes.html">Upload</a></div>
+            <div class="cc-card p-5"><div class="flex items-center gap-2 mb-3 text-secondary"><span class="material-symbols-outlined">download</span><span class="font-label-md text-label-md uppercase">Export</span></div><h4 class="font-body-lg text-body-lg font-semibold">Download tracker workbook</h4><button id="export" class="cc-button cc-button-secondary mt-4 w-full">Export Excel</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+</main>
+<div id="toast-root" class="fixed right-4 bottom-4 z-[100] space-y-2"></div>
+<script src="/assets/api.js"></script>
+<script src="/assets/app.js"></script>
+
+    <script>
+    const statMeta = [
+      ["total_found","search","Total Found"],["ready_to_apply","task_alt","Ready to Apply"],["needs_review","warning","Needs Review"],["submitted","send","Submitted"],["failed_blocked","block","Failed/Blocked"],["average_fit_score","analytics","Avg Fit Score"]
+    ];
+    async function loadDashboard(){
+      try{
+        const stats = await CareerAPI.getStats();
+        document.getElementById("stats-grid").innerHTML = statMeta.map(([key,icon,label]) => `<div class="cc-card p-4 hover:bg-surface-container-low transition-colors group"><div class="flex items-center gap-2 mb-2 text-on-surface-variant group-hover:text-primary"><span class="material-symbols-outlined text-[20px]">${icon}</span><span class="font-label-md text-label-md uppercase tracking-wider">${label}</span></div><div class="font-headline-lg text-headline-lg ${key === "needs_review" ? "text-tertiary" : key === "failed_blocked" ? "text-error" : "text-on-surface"}">${stats[key] ?? 0}${key === "average_fit_score" ? "%" : ""}</div></div>`).join("");
+        document.getElementById("review-title").textContent = `Review ${stats.needs_review || 0} Prepared Applications`;
+      } catch(e) { handleError(e); }
+    }
+    document.getElementById("init-db").onclick = async () => { try { await CareerAPI.initDb(); showToast("Database tables are ready."); loadDashboard(); } catch(e) { handleError(e); } };
+    document.getElementById("export").onclick = () => CareerAPI.exportExcel();
+    loadDashboard();
+    </script>
+
+</body>
+</html>

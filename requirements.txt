@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+pydantic
+python-multipart
+openpyxl
+pandas
+playwright
+google-genai
+aiofiles
