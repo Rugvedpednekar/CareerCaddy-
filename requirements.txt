@@ -10,3 +10,6 @@ pandas
 playwright
 google-genai
 aiofiles
+beautifulsoup4
+lxml
+httpx

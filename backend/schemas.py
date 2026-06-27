@@ -11,6 +11,9 @@ class JobIn(BaseModel):
     source: str | None = None
     job_description: str | None = None
 
+class JobUrlIn(BaseModel):
+    url: str
+
 class JobOut(JobIn):
     model_config = ConfigDict(from_attributes=True)
     job_id: str

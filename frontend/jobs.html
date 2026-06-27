@@ -91,6 +91,21 @@ tailwind.config = {
         <div><h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Job Tracker</h2><p class="font-body-lg text-body-lg text-on-surface-variant">Manage and prioritize your active opportunities.</p></div>
         <button id="show-import" class="cc-button cc-button-primary"><span class="material-symbols-outlined text-sm">add</span>Import Job</button>
       </div>
+      <section class="cc-card p-unit-lg" aria-labelledby="link-import-title">
+        <div class="flex flex-col lg:flex-row lg:items-end gap-unit-md">
+          <div class="flex-1">
+            <h3 id="link-import-title" class="font-headline-md text-headline-md mb-1">Import Job From Link</h3>
+            <p class="text-on-surface-variant mb-unit-md">Paste a job posting URL and CareerCaddy AI will extract the job details, score the fit, and add it to your tracker.</p>
+            <form id="link-import-form" class="flex flex-col sm:flex-row gap-unit-sm">
+              <label class="sr-only" for="job-url">Job URL</label>
+              <input id="job-url" name="url" class="cc-input flex-1" type="url" inputmode="url" autocomplete="url" placeholder="https://company.com/jobs/..." required>
+              <button id="extract-job" class="cc-button cc-button-primary sm:min-w-[150px]" type="submit"><span class="material-symbols-outlined text-sm">link</span><span>Extract Job</span></button>
+            </form>
+            <p id="extract-status" class="mt-unit-sm text-on-surface-variant min-h-5" role="status" aria-live="polite"></p>
+          </div>
+          <div id="extract-preview" class="hidden lg:w-[360px] border-l-4 border-primary bg-surface-container-low p-unit-md"></div>
+        </div>
+      </section>
       <div class="cc-card p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <select id="filter-status" class="cc-input"><option value="">All statuses</option><option>FOUND</option><option>SCORED</option><option>READY_TO_APPLY</option><option>NEEDS_REVIEW</option><option>SUBMITTED</option><option>FAILED</option></select>
         <select id="filter-portal" class="cc-input"><option value="">All portals</option><option>greenhouse</option><option>lever</option><option>generic</option><option>workday</option><option>ashby</option></select>
@@ -124,7 +139,8 @@ tailwind.config = {
     <script>
     const els = { body: document.getElementById("jobs-body"), modal: document.getElementById("import-modal") };
     function fitCell(score){ if(score === null || score === undefined) return '<span class="text-on-surface-variant italic text-sm">Pending</span>'; const color = score >= 80 ? 'emerald' : score >= 60 ? 'amber' : 'red'; return `<div class="flex items-center gap-2"><div class="w-full bg-surface-container-high rounded-full h-1.5 max-w-[60px]"><div class="bg-${color}-500 h-1.5 rounded-full" style="width:${score}%"></div></div><span class="font-code-sm text-code-sm text-${color}-600 font-medium">${score}</span></div>`; }
-    function row(job){ return `<tr class="hover:bg-surface-container-low transition-colors"><td class="py-4 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center text-primary font-bold">${(job.company||'?')[0]}</div><span class="font-medium">${job.company}</span></div></td><td class="py-4 px-4">${job.title}</td><td class="py-4 px-4 text-on-surface-variant">${job.location||''}</td><td class="py-4 px-4">${job.portal||'generic'}</td><td class="py-4 px-4">${fitCell(job.fit_score)}</td><td class="py-4 px-4">${job.resume_version||''}</td><td class="py-4 px-4">${renderStatusBadge(job.status)}</td><td class="py-4 px-4 text-on-surface-variant">${formatDate(job.date_found)}</td><td class="py-4 px-4"><div class="flex justify-end gap-1 flex-wrap"><button data-act="score" data-id="${job.job_id}" class="cc-button cc-button-secondary">Score</button><button data-act="ready" data-id="${job.job_id}" class="cc-button cc-button-secondary">Ready</button><button data-act="prepare" data-id="${job.job_id}" class="cc-button cc-button-primary">Prepare</button><button data-act="skip" data-id="${job.job_id}" class="cc-button cc-button-secondary">Skip</button><button data-act="delete" data-id="${job.job_id}" class="cc-button cc-button-danger"><span class="material-symbols-outlined text-sm">delete</span></button></div></td></tr>`; }
+    function esc(value){ const span = document.createElement('span'); span.textContent = value == null ? '' : String(value); return span.innerHTML; }
+    function row(job){ return `<tr class="hover:bg-surface-container-low transition-colors"><td class="py-4 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center text-primary font-bold">${esc((job.company||'?')[0])}</div><span class="font-medium">${esc(job.company)}</span></div></td><td class="py-4 px-4">${esc(job.title)}</td><td class="py-4 px-4 text-on-surface-variant">${esc(job.location)}</td><td class="py-4 px-4">${esc(job.portal||'generic')}</td><td class="py-4 px-4">${fitCell(job.fit_score)}</td><td class="py-4 px-4">${esc(job.resume_version)}</td><td class="py-4 px-4">${renderStatusBadge(job.status)}</td><td class="py-4 px-4 text-on-surface-variant">${formatDate(job.date_found)}</td><td class="py-4 px-4"><div class="flex justify-end gap-1 flex-wrap"><button data-act="score" data-id="${esc(job.job_id)}" class="cc-button cc-button-secondary">Score</button><button data-act="ready" data-id="${esc(job.job_id)}" class="cc-button cc-button-secondary">Ready</button><button data-act="prepare" data-id="${esc(job.job_id)}" class="cc-button cc-button-primary">Prepare</button><button data-act="skip" data-id="${esc(job.job_id)}" class="cc-button cc-button-secondary">Skip</button><button data-act="delete" data-id="${esc(job.job_id)}" class="cc-button cc-button-danger"><span class="material-symbols-outlined text-sm">delete</span></button></div></td></tr>`; }
     async function loadJobs(){ try { const filters = { status: f('filter-status'), portal: f('filter-portal'), min_score: f('filter-score'), search: f('filter-search') }; const jobs = await CareerAPI.getJobs(filters); els.body.innerHTML = jobs.length ? jobs.map(row).join('') : `<tr><td colspan="9" class="py-8 text-center text-on-surface-variant">No jobs yet. Import one to start.</td></tr>`; } catch(e){ handleError(e); } }
     function f(id){ return document.getElementById(id).value; }
     ['filter-status','filter-portal','filter-score','filter-search'].forEach(id => document.getElementById(id).addEventListener('input', loadJobs));
@@ -132,6 +148,29 @@ tailwind.config = {
     document.getElementById('close-import').onclick = () => els.modal.close();
     document.getElementById('cancel-import').onclick = () => els.modal.close();
     document.getElementById('import-form').onsubmit = async (event) => { event.preventDefault(); const job = Object.fromEntries(new FormData(event.target).entries()); try { await CareerAPI.importJob(job); showToast('Job imported.'); els.modal.close(); event.target.reset(); loadJobs(); } catch(e){ handleError(e); } };
+    document.getElementById('link-import-form').onsubmit = async (event) => {
+      event.preventDefault();
+      const button = document.getElementById('extract-job');
+      const status = document.getElementById('extract-status');
+      const preview = document.getElementById('extract-preview');
+      const label = button.querySelector('span:last-child');
+      button.disabled = true; label.textContent = 'Extracting...'; status.textContent = 'Extracting job details...'; preview.classList.add('hidden');
+      try {
+        const result = await CareerAPI.extractJobFromUrl(event.target.url.value);
+        const job = result.job;
+        status.textContent = result.duplicate ? 'This job already exists in your tracker.' : 'Job added to tracker.';
+        preview.innerHTML = `<p class="font-label-md text-label-md text-primary uppercase mb-1">${result.duplicate ? 'Existing job' : 'Extracted and scored'}</p><p class="font-medium">${esc(job.company)} · ${esc(job.title)}</p><p class="text-on-surface-variant mt-1">${esc(job.location || 'Location unavailable')} · ${esc(job.portal || 'generic')}</p><p class="mt-2"><span class="font-medium">Fit ${esc(job.fit_score)}</span> · ${esc(job.resume_version || 'Resume pending')}</p>`;
+        preview.classList.remove('hidden');
+        showToast(result.duplicate ? 'This job already exists in your tracker.' : 'Job added to tracker.');
+        if (!result.duplicate) event.target.reset();
+        await loadJobs();
+      } catch(e) {
+        status.textContent = 'Could not extract this job automatically. Please use manual import.';
+        showToast(status.textContent, 'error');
+      } finally {
+        button.disabled = false; label.textContent = 'Extract Job';
+      }
+    };
     els.body.onclick = async (event) => { const b = event.target.closest('button[data-act]'); if(!b) return; try { if(b.dataset.act === 'score') await CareerAPI.scoreJob(b.dataset.id); if(b.dataset.act === 'ready') await CareerAPI.markReady(b.dataset.id); if(b.dataset.act === 'prepare') await CareerAPI.prepareApplication(b.dataset.id); if(b.dataset.act === 'skip') await CareerAPI.skipJob(b.dataset.id); if(b.dataset.act === 'delete' && confirm('Delete this job?')) await CareerAPI.deleteJob(b.dataset.id); showToast('Updated.'); loadJobs(); } catch(e){ handleError(e); } };
     if(location.hash === '#import') setTimeout(() => els.modal.showModal(), 200);
     loadJobs();

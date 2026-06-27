@@ -33,6 +33,8 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/careercaddy
 
 Tables, the default `demo_user`, and upload folders are created automatically when the FastAPI app starts. The `/api/init-db` endpoint remains available as an optional debug endpoint, but it is not required for local or Railway startup.
 
+On the Job Tracker page, **Import Job From Link** accepts a public job-posting URL, extracts structured details, scores the role, and saves it automatically. Pages that require login, present a CAPTCHA, block automated access, or do not expose the required company/title fields fall back to the existing manual import flow.
+
 ## Run
 
 ```bash

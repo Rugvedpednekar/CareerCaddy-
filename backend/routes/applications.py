@@ -23,10 +23,22 @@ def prepare(job_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "Job not found")
     app = db.query(Application).filter(Application.job_id == job_id, Application.user_id == DEFAULT_USER_ID).first()
     if not app:
-        app = Application(application_id=uid("app"), user_id=DEFAULT_USER_ID, job_id=job_id, status="CREATED", current_step="READY_FOR_WORKER", resume_version=job.resume_version)
+        app = Application(
+            application_id=uid("app"),
+            user_id=DEFAULT_USER_ID,
+            job_id=job_id,
+            status="NEEDS_REVIEW",
+            current_step="Prepared for review",
+            resume_version=job.resume_version,
+        )
         db.add(app)
-    job.status = "READY_TO_APPLY"
-    db.commit(); db.refresh(app)
+    elif app.status in {"CREATED", "READY_FOR_WORKER"} or app.current_step == "READY_FOR_WORKER":
+        app.status = "NEEDS_REVIEW"
+        app.current_step = "Prepared for review"
+        app.resume_version = app.resume_version or job.resume_version
+    job.status = "NEEDS_REVIEW"
+    db.commit()
+    db.refresh(app)
     return app
 
 @router.get("")

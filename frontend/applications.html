@@ -97,8 +97,13 @@ tailwind.config = {
 <script src="/assets/app.js"></script>
 
     <script>
-    const groups = [["IN_PROGRESS","In Progress"],["NEEDS_REVIEW","Needs Review"],["SUBMITTED","Submitted"],["FAILED","Failed"]];
-    async function loadApps(){ try{ const apps = await CareerAPI.getApplications(); document.getElementById('app-groups').innerHTML = groups.map(([status,label]) => { const list = apps.filter(a => a.status === status || (status === 'FAILED' && ['FAILED','NEEDS_LOGIN','NEEDS_CAPTCHA'].includes(a.status))); return `<section class="cc-card p-5"><h3 class="font-headline-md text-headline-md mb-4">${label}</h3><div class="space-y-3">${list.map(a=>{const j=a.job||{}; return `<div class="border border-outline-variant rounded-lg p-4 bg-surface-container-lowest"><div class="flex justify-between gap-3">${renderStatusBadge(a.status)}<span class="text-on-surface-variant text-sm">${formatDate(a.updated_at)}</span></div><h4 class="font-semibold mt-3">${j.company||'Company'} - ${j.title||'Role'}</h4><p class="text-on-surface-variant mt-1">Step: ${a.current_step||'Pending'}</p><p class="text-on-surface-variant mt-1 truncate">Notes: ${(a.logs||[]).join(' | ') || a.blocker || 'No notes'}</p></div>`}).join('') || '<p class="text-on-surface-variant">None</p>'}</div></section>`; }).join(''); }catch(e){handleError(e);} }
+    const groups = [
+      { statuses: ['CREATED', 'READY_FOR_WORKER', 'IN_PROGRESS'], label: 'In Progress' },
+      { statuses: ['NEEDS_REVIEW'], label: 'Needs Review' },
+      { statuses: ['SUBMITTED'], label: 'Submitted' },
+      { statuses: ['FAILED', 'NEEDS_LOGIN', 'NEEDS_CAPTCHA'], label: 'Failed' }
+    ];
+    async function loadApps(){ try{ const apps = await CareerAPI.getApplications(); document.getElementById('app-groups').innerHTML = groups.map(({statuses,label}) => { const list = apps.filter(a => statuses.includes(a.status)); return `<section class="cc-card p-5"><h3 class="font-headline-md text-headline-md mb-4">${label}</h3><div class="space-y-3">${list.map(a=>{const j=a.job||{}; return `<div class="border border-outline-variant rounded-lg p-4 bg-surface-container-lowest"><div class="flex justify-between gap-3">${renderStatusBadge(a.status)}<span class="text-on-surface-variant text-sm">${formatDate(a.updated_at)}</span></div><h4 class="font-semibold mt-3">${j.company||'Company'} - ${j.title||'Role'}</h4><p class="text-on-surface-variant mt-1">Step: ${a.current_step||'Pending'}</p><p class="text-on-surface-variant mt-1 truncate">Notes: ${(a.logs||[]).join(' | ') || a.blocker || 'No notes'}</p></div>`}).join('') || '<p class="text-on-surface-variant">None</p>'}</div></section>`; }).join(''); }catch(e){handleError(e);} }
     loadApps();
     </script>
 

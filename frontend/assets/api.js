@@ -14,6 +14,7 @@ const CareerAPI = {
   getStats: () => apiRequest("/api/dashboard/stats"),
   getJobs: (filters = {}) => apiRequest(`/api/jobs?${qs(filters)}`),
   importJob: (job) => apiRequest("/api/jobs/import", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(job) }),
+  extractJobFromUrl: (url) => apiRequest("/api/jobs/extract", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ url }) }),
   scoreJob: (jobId) => apiRequest(`/api/jobs/${jobId}/score`, { method: "POST" }),
   markReady: (jobId) => apiRequest(`/api/jobs/${jobId}/ready`, { method: "POST" }),
   skipJob: (jobId) => apiRequest(`/api/jobs/${jobId}/skip`, { method: "POST" }),
