@@ -1,4 +1,3 @@
-import traceback
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -23,51 +22,89 @@ def best_resume(db, resume_type):
     resume = db.query(Resume).filter(Resume.user_id == DEFAULT_USER_ID, Resume.resume_type == resume_type).order_by(Resume.created_at.desc()).first()
     return resume.file_path if resume else None
 
+def append_log(app, message):
+    logs = list(app.logs or [])
+    logs.append(message)
+    app.logs = logs
+
 def run_once():
     create_tables()
     db = SessionLocal()
     pw = browser = None
     try:
-        jobs = db.query(Job).filter(Job.user_id == DEFAULT_USER_ID, Job.status == "READY_TO_APPLY").limit(5).all()
-        if not jobs:
-            print("No READY_TO_APPLY jobs found.")
+        applications = db.query(Application).filter(
+            Application.user_id == DEFAULT_USER_ID,
+            Application.status == "READY_FOR_WORKER",
+        ).limit(5).all()
+        if not applications:
+            print("No READY_FOR_WORKER applications found.")
             return
         profile = db.query(User).filter(User.user_id == DEFAULT_USER_ID).first() or User(user_id=DEFAULT_USER_ID)
         pw, browser = launch_browser()
-        for job in jobs:
-            run = AutomationRun(run_id=uid("run"), user_id=DEFAULT_USER_ID, job_id=job.job_id, status="IN_PROGRESS", logs=[])
+        for app in applications:
+            job = db.query(Job).filter(Job.job_id == app.job_id, Job.user_id == DEFAULT_USER_ID).first()
+            run = AutomationRun(run_id=uid("run"), user_id=DEFAULT_USER_ID, job_id=app.job_id, application_id=app.application_id, status="IN_PROGRESS", logs=[])
             db.add(run)
-            app = db.query(Application).filter(Application.job_id == job.job_id, Application.user_id == DEFAULT_USER_ID).first()
-            if not app:
-                app = Application(application_id=uid("app"), user_id=DEFAULT_USER_ID, job_id=job.job_id, status="IN_PROGRESS", current_step="OPENING_PORTAL", resume_version=job.resume_version)
-                db.add(app)
-            job.status = "IN_PROGRESS"; app.status = "IN_PROGRESS"
+            app.status = "IN_PROGRESS"
+            app.current_step = "Worker preparing form"
+            append_log(app, "Worker started preparing application.")
+            if job:
+                job.status = "IN_PROGRESS"
             db.commit()
+            if not job or not job.apply_url:
+                app.status = "NEEDS_REVIEW"
+                app.current_step = "Prepared for review"
+                app.blocker = "Missing application URL"
+                append_log(app, "Worker could not open the application because the job URL is missing.")
+                run.status = "NEEDS_REVIEW"
+                run.logs = list(app.logs or [])
+                if job:
+                    job.status = "NEEDS_REVIEW"
+                db.commit()
+                continue
             context = browser.new_context()
             page = context.new_page()
             try:
                 page.goto(job.apply_url, wait_until="domcontentloaded", timeout=45000)
+                append_log(app, "Opened application link.")
                 blocker = detect_blocker(page)
                 if blocker:
-                    app.status = blocker; job.status = blocker; app.blocker = blocker
+                    app.status = "NEEDS_REVIEW"
+                    app.current_step = "Prepared for review"
+                    app.blocker = "Login required" if blocker == "NEEDS_LOGIN" else "CAPTCHA requires user action"
+                    append_log(app, f"Worker stopped: {app.blocker}.")
+                    append_log(app, "Ready for user review.")
+                    job.status = "NEEDS_REVIEW"
+                    run.status = "NEEDS_REVIEW"
+                    run.logs = list(app.logs or [])
                 else:
                     portal = detect_portal(job.apply_url or job.portal or "")
                     handler = HANDLERS.get(portal, generic)
                     resume_path = best_resume(db, job.resume_version or "SWE")
-                    result = handler.prepare_application(page, asdict(job), asdict(profile), resume_path)
+                    automation_profile = asdict(profile)
+                    answers = dict(app.generated_answers or {})
+                    for key in ("email", "phone", "location", "linkedin", "github", "portfolio"):
+                        automation_profile[key] = answers.get(key) or automation_profile.get(key)
+                    result = handler.prepare_application(page, asdict(job), automation_profile, resume_path)
                     screenshot_dir = UPLOAD_DIR if UPLOAD_DIR.is_absolute() else BASE_DIR / UPLOAD_DIR
                     screenshot_path = screenshot_dir / "screenshots" / DEFAULT_USER_ID / f"{app.application_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.png"
                     save_screenshot(page, screenshot_path)
-                    app.status = "NEEDS_REVIEW"; app.current_step = "FORM_PREPARED"; app.screenshot_path = str(screenshot_path)
-                    app.logs = result.get("logs", [])
+                    for log in result.get("logs", []):
+                        append_log(app, log)
+                    append_log(app, "Filled safe known fields where possible.")
+                    append_log(app, "Stopped before final submission.")
+                    append_log(app, "Ready for user review.")
+                    app.status = "NEEDS_REVIEW"; app.current_step = "Prepared for review"; app.screenshot_path = str(screenshot_path)
                     app.blocker = result.get("blocker")
                     app.resume_path = resume_path
                     job.status = "NEEDS_REVIEW"
-                    run.status = "NEEDS_REVIEW"; run.logs = app.logs; run.screenshot_path = str(screenshot_path)
+                    run.status = "NEEDS_REVIEW"; run.logs = list(app.logs or []); run.screenshot_path = str(screenshot_path)
                 db.commit()
             except Exception as exc:
-                app.status = "FAILED"; job.status = "FAILED"; app.blocker = str(exc)
-                run.status = "FAILED"; run.error_message = traceback.format_exc()
+                message = f"{type(exc).__name__}: {str(exc)[:400]}"
+                app.status = "FAILED"; app.current_step = "Automation failed"; job.status = "FAILED"; app.blocker = message
+                append_log(app, "Worker stopped because the application form could not be prepared.")
+                run.status = "FAILED"; run.error_message = message; run.logs = list(app.logs or [])
                 db.commit()
             finally:
                 context.close()

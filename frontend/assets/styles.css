@@ -16,3 +16,6 @@
 .custom-scrollbar::-webkit-scrollbar { width:6px; height:6px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background:#c2c6d6; border-radius:20px; }
 @media (max-width: 767px) { .nav-link.active { border-right:0; } }
+@media (min-width: 768px) {
+  body > main { flex: none; min-width: 0; width: calc(100% - 260px); }
+}

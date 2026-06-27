@@ -16,6 +16,19 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 MAX_PAGE_CHARS = 1_500_000
+TITLE_TERMS = (
+    "software engineer", "data analyst", "support engineer", "backend engineer",
+    "full stack engineer", "fullstack engineer", "data engineer", "machine learning engineer",
+    "new grad", "intern", "associate", "developer", "analyst", "platform engineer",
+    "sre", "production support",
+)
+SKILL_TERMS = (
+    "Python", "Java", "JavaScript", "TypeScript", "SQL", "React", "Node.js", "FastAPI",
+    "Spring Boot", "AWS", "Docker", "Kubernetes", "PostgreSQL", "MySQL", "MongoDB",
+    "Redis", "REST APIs", "Linux", "Git", "GitHub Actions", "CI/CD", "ServiceNow",
+    "troubleshooting", "data pipelines", "ETL", "machine learning", "distributed systems",
+    "microservices",
+)
 
 
 class JobExtractionError(ValueError):
@@ -151,6 +164,108 @@ PAGE TEXT:
 {raw_text[:50000]}"""
     response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
     return _strict_json(response.text or "")
+
+
+def structure_job_text_with_ai(job_text: str, apply_url: str | None = None) -> dict[str, Any]:
+    if not GEMINI_API_KEY:
+        return {}
+    from google import genai
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    prompt = f"""Extract a job posting from pasted text. Return strict JSON only with exactly these keys:
+{{"company":null,"title":null,"location":null,"job_description":null,"job_summary":null,"required_skills":[],"employment_type":null,"salary":null,"date_posted":null}}
+Do not invent details. Use null when unknown. Extract only information present in the text. required_skills must be a list. The summary must be 2-4 grounded sentences.
+Optional URL: {apply_url or ''}
+PASTED TEXT:
+{job_text[:50000]}"""
+    response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
+    return _strict_json(response.text or "")
+
+
+def _first_matching_line(lines: list[str], pattern: str) -> str | None:
+    regex = re.compile(pattern, re.IGNORECASE)
+    for line in lines:
+        match = regex.search(line)
+        if match:
+            return normalize_whitespace(match.group(1))
+    return None
+
+
+def _text_summary(text: str) -> str | None:
+    chunks = [normalize_whitespace(value) for value in re.split(r"\n+|(?<=[.!?])\s+", text)]
+    metadata = re.compile(r"^(company|job title|title|role|position|location|salary|employment type|date posted|posted)\s*[:\-]", re.IGNORECASE)
+    useful = [value for value in chunks if value and 45 <= len(value) <= 320 and not metadata.search(value)]
+    return " ".join(useful[:4]) or None
+
+
+def extract_job_from_text(job_text: str, apply_url: str | None = None) -> dict[str, Any]:
+    raw = (job_text or "").strip()
+    if not raw:
+        raise JobExtractionError("Paste the full job posting text before extracting details.")
+    if len(raw) < 100:
+        raise JobExtractionError("Job posting text must contain at least 100 characters.")
+    url = validate_url(apply_url) if apply_url and apply_url.strip() else None
+    lines = [normalize_whitespace(line) for line in raw.splitlines()]
+    lines = [line for line in lines if line]
+    cleaned = normalize_whitespace(raw) or ""
+
+    title = _first_matching_line(lines, r"^(?:job\s+title|title|role|position)\s*[:\-]\s*(.+)$")
+    if not title:
+        title = next((line for line in lines if len(line) <= 140 and any(term in line.lower() for term in TITLE_TERMS)), None)
+    company = _first_matching_line(lines, r"^company\s*[:\-]\s*(.+)$")
+    if not company:
+        company = _first_matching_line(lines, r"^(?:about|at)\s+([A-Z][A-Za-z0-9&.'\- ]{1,80})(?:\s|$)")
+    if not company and title in lines:
+        title_index = lines.index(title)
+        if title_index > 0:
+            candidate = lines[title_index - 1]
+            if len(candidate) <= 80 and not any(term in candidate.lower() for term in TITLE_TERMS):
+                company = candidate
+
+    location = _first_matching_line(lines, r"^location\s*[:\-]\s*(.+)$")
+    if not location:
+        location = next((line for line in lines if re.fullmatch(r"(?:[A-Za-z .'-]+,\s*[A-Z]{2}|Remote|United States)", line, re.IGNORECASE)), None)
+    salary_match = re.search(r"\$\s?\d{2,3}(?:,\d{3})+(?:\.\d+)?\s*(?:-|to|–)\s*\$?\s?\d{2,3}(?:,\d{3})+(?:\.\d+)?", cleaned, re.IGNORECASE)
+    employment_match = re.search(r"\b(full[- ]time|part[- ]time|internship|contract|temporary)\b", cleaned, re.IGNORECASE)
+    date_match = re.search(r"(?:date posted|posted)\s*[:\-]\s*([^|;]{4,40})", cleaned, re.IGNORECASE)
+    lowered = cleaned.lower()
+    skills = [skill for skill in SKILL_TERMS if re.search(rf"(?<!\w){re.escape(skill.lower())}(?!\w)", lowered)]
+
+    data: dict[str, Any] = {
+        "company": company,
+        "title": title,
+        "location": location,
+        "apply_url": url,
+        "portal": detect_portal(url or ""),
+        "source": "Text Paste",
+        "job_description": cleaned[:50000],
+        "job_summary": _text_summary(raw),
+        "required_skills": skills,
+        "employment_type": normalize_whitespace(employment_match.group(1)) if employment_match else None,
+        "salary": normalize_whitespace(salary_match.group(0)) if salary_match else None,
+        "date_posted": normalize_whitespace(date_match.group(1)) if date_match else None,
+    }
+    warnings: list[str] = []
+    if GEMINI_API_KEY:
+        try:
+            ai_data = structure_job_text_with_ai(cleaned, url)
+            for key in ("company", "title", "location", "employment_type", "salary", "date_posted"):
+                if ai_data.get(key) and not data.get(key):
+                    data[key] = normalize_whitespace(ai_data[key])
+            if ai_data.get("job_description"):
+                data["job_description"] = clean_description(ai_data["job_description"])
+            if ai_data.get("job_summary"):
+                data["job_summary"] = normalize_whitespace(ai_data["job_summary"])
+            ai_skills = ai_data.get("required_skills")
+            if isinstance(ai_skills, list):
+                data["required_skills"] = [value for value in (normalize_whitespace(skill) for skill in ai_skills) if value]
+        except Exception:
+            warnings.append("AI cleanup was unavailable; standard text extraction was used.")
+    for field in ("company", "title", "location"):
+        if not data.get(field):
+            warnings.append(f"Could not determine {field} from the pasted text.")
+    data["extraction_warnings"] = warnings
+    return data
 
 
 def extract_job_from_url(url: str) -> dict[str, Any]:

@@ -14,6 +14,10 @@ class JobIn(BaseModel):
 class JobUrlIn(BaseModel):
     url: str
 
+class JobTextIn(BaseModel):
+    job_text: str
+    apply_url: str | None = None
+
 class JobOut(JobIn):
     model_config = ConfigDict(from_attributes=True)
     job_id: str
@@ -64,4 +68,8 @@ class ProfileIn(BaseModel):
 
 class BlockerIn(BaseModel):
     blocker: str = "FAILED"
+    notes: str | None = None
+
+class ReviewUpdateIn(BaseModel):
+    generated_answers: dict[str, Any]
     notes: str | None = None

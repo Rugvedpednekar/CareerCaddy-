@@ -27,6 +27,19 @@ function handleError(error) {
   console.error(error);
   showToast(error.message || "Something went wrong", "error");
 }
+function escapeHTML(value) {
+  const span = document.createElement("span");
+  span.textContent = value == null ? "" : String(value);
+  return span.innerHTML;
+}
+function safeExternalUrl(value) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch (_) {
+    return "";
+  }
+}
 function initializeSidebarActiveState() {
   const active = document.querySelector("main")?.dataset.activeNav;
   document.querySelectorAll(`[data-nav="${active}"]`).forEach((a) => a.classList.add("active"));
@@ -41,3 +54,5 @@ window.renderStatusBadge = renderStatusBadge;
 window.formatDate = formatDate;
 window.showToast = showToast;
 window.handleError = handleError;
+window.escapeHTML = escapeHTML;
+window.safeExternalUrl = safeExternalUrl;

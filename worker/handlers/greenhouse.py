@@ -7,6 +7,7 @@ def prepare_application(page, job, profile, resume_path) -> dict:
         "Last Name": profile.get("last_name"),
         "Email": profile.get("email"),
         "Phone": profile.get("phone"),
+        "Location": profile.get("location"),
         "LinkedIn": profile.get("linkedin"),
         "GitHub": profile.get("github"),
         "Portfolio": profile.get("portfolio"),

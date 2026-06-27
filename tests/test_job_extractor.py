@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
-from backend.job_extractor import JobExtractionError, detect_portal, extract_job_from_url
+from backend.job_extractor import JobExtractionError, detect_portal, extract_job_from_text, extract_job_from_url
 
 
 class JobExtractorTests(unittest.TestCase):
@@ -47,6 +47,32 @@ class JobExtractorTests(unittest.TestCase):
         get.return_value = Mock(status_code=403)
         with self.assertRaisesRegex(JobExtractionError, "blocked or requires login"):
             extract_job_from_url("https://example.com/jobs/1")
+
+    def test_extracts_pasted_job_text(self):
+        text = """Company: Acme Cloud
+Software Engineer
+Location: New York, NY
+Employment type: Full-time
+Salary range: $120,000 - $160,000
+We build reliable distributed systems and REST APIs for customers across the United States.
+You will develop Python and FastAPI services backed by PostgreSQL and AWS.
+Responsibilities include CI/CD, Docker, Kubernetes, troubleshooting, and microservices collaboration.
+Candidates should have experience with SQL, Git, Linux, and data pipelines."""
+
+        result = extract_job_from_text(text, "https://boards.greenhouse.io/acme/jobs/42")
+
+        self.assertEqual(result["company"], "Acme Cloud")
+        self.assertEqual(result["title"], "Software Engineer")
+        self.assertEqual(result["location"], "New York, NY")
+        self.assertEqual(result["salary"], "$120,000 - $160,000")
+        self.assertEqual(result["portal"], "greenhouse")
+        self.assertIn("Python", result["required_skills"])
+        self.assertIn("PostgreSQL", result["required_skills"])
+        self.assertGreaterEqual(len(result["job_summary"].split(".")), 2)
+
+    def test_rejects_short_pasted_text(self):
+        with self.assertRaisesRegex(JobExtractionError, "at least 100"):
+            extract_job_from_text("Software Engineer at Acme")
 
 
 if __name__ == "__main__":

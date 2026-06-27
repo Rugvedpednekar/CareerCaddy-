@@ -33,7 +33,7 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/careercaddy
 
 Tables, the default `demo_user`, and upload folders are created automatically when the FastAPI app starts. The `/api/init-db` endpoint remains available as an optional debug endpoint, but it is not required for local or Railway startup.
 
-On the Job Tracker page, **Import Job From Link** accepts a public job-posting URL, extracts structured details, scores the role, and saves it automatically. Pages that require login, present a CAPTCHA, block automated access, or do not expose the required company/title fields fall back to the existing manual import flow.
+The Job Tracker supports public job links, pasted job-posting text, and manual entry. Link and text imports extract structured details, score the role, and save it automatically. Pages that require login, present a CAPTCHA, block automated access, or do not expose enough required fields fall back to manual import.
 
 ## Run
 
@@ -61,11 +61,11 @@ python worker/worker.py
 
 1. Open the dashboard.
 2. Import a job on the Job Tracker page.
-3. Score the job.
-4. Mark it ready.
+3. Click Prepare and review or edit the generated application answers.
+4. Click Start Automation to queue the application.
 5. Run `python worker/worker.py`.
-6. Review the prepared application in the Review Queue.
-7. Mark submitted manually only after reviewing the real application.
+6. Review the prepared form and screenshot in the Review Queue.
+7. Open the real application link, submit it manually, then mark it submitted in CareerCaddy.
 
 ## Railway Setup
 
@@ -86,6 +86,8 @@ The included `Procfile` also defines a worker process:
 ```text
 worker: python worker/worker.py
 ```
+
+Configure the worker service with the same `DATABASE_URL`, `DEFAULT_USER_ID`, `UPLOAD_DIR`, and optional `GEMINI_API_KEY` as the web service. Set `APP_ENV=production`. The worker polls only `READY_FOR_WORKER` applications, fills safe known fields, captures a screenshot when possible, and always stops before final submission.
 
 Uploads are stored locally for the MVP. Railway filesystem storage is ephemeral and not durable across redeploys, so replace local uploads with S3, Cloudinary, or another persistent object store before production use.
 
