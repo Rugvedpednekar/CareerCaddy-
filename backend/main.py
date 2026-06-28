@@ -10,7 +10,7 @@ from .config import AKANSHA_INITIAL_PASSWORD, APP_ENV, BASE_DIR, DEFAULT_USER_ID
 from .database import create_tables, ensure_schema_upgrades
 from .database import SessionLocal
 from .models import User
-from .routes import applications, auth, dashboard, export, jobs, profile, resumes
+from .routes import agent, applications, auth, dashboard, export, jobs, profile, resumes
 from .security import hash_password
 
 logger = logging.getLogger("careercaddy.startup")
@@ -81,6 +81,7 @@ app.include_router(applications.router)
 app.include_router(resumes.router)
 app.include_router(profile.router)
 app.include_router(export.router)
+app.include_router(agent.router)
 
 @app.get("/health")
 def health():

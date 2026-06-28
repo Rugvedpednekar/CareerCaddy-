@@ -1,12 +1,22 @@
 from pathlib import Path
+
 from playwright.sync_api import sync_playwright
-from backend.config import APP_ENV, IS_RAILWAY, WORKER_HEADLESS
 
 def launch_browser():
     pw = sync_playwright().start()
-    headless = APP_ENV == "production" or IS_RAILWAY or WORKER_HEADLESS
-    browser = pw.chromium.launch(headless=headless, slow_mo=0 if headless else 250)
-    return pw, browser
+    try:
+        browser = pw.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ],
+        )
+        return pw, browser
+    except Exception:
+        pw.stop()
+        raise
 
 def save_screenshot(page, path):
     Path(path).parent.mkdir(parents=True, exist_ok=True)

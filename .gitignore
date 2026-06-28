@@ -5,3 +5,6 @@ __pycache__/
 *.pyc
 uploads/
 .DS_Store
+*.enc
+gmail_credentials.json
+gmail_token.json
