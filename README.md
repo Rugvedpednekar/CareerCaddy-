@@ -150,8 +150,12 @@ Supported handlers are Greenhouse, Lever, Workday, LinkedIn Easy Apply, and a ge
 7. The web process uses:
 
 ```text
-uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+python -m backend.serve
 ```
+
+The launcher reads Railway's `PORT` environment variable in Python and passes it to Uvicorn as an integer. This avoids relying on shell expansion in Docker or Procfile start commands.
+
+If the Railway web service has a dashboard-level custom Start Command, replace it with `python -m backend.serve` (or remove it so the Docker command is used). Do not leave the old literal `uvicorn ... --port $PORT` override enabled.
 
 The included `Procfile` also defines a worker process:
 
