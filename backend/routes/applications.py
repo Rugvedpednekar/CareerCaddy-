@@ -6,7 +6,7 @@ from ..application_answers import generate_answer_package
 from ..auth import get_current_user
 from ..config import BASE_DIR, UPLOAD_DIR
 from ..database import get_db
-from ..models import Application, Job, User, uid
+from ..models import Application, AutomationRun, Job, User, uid
 from ..schemas import AutomationStartIn, BlockerIn, ReviewUpdateIn
 
 router = APIRouter(prefix="/api/applications", tags=["applications"])
@@ -81,6 +81,34 @@ def get_application(application_id: str, db: Session = Depends(get_db), user: Us
     job = db.query(Job).filter(Job.job_id == app.job_id, Job.user_id == user.user_id).first()
     return {**model_dict(app), "job": job}
 
+@router.get("/{application_id}/automation-status")
+def get_automation_status(application_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    app = get_application_record(application_id, db, user.user_id)
+    runs = db.query(AutomationRun).filter(
+        AutomationRun.application_id == application_id,
+        AutomationRun.user_id == user.user_id,
+    ).order_by(AutomationRun.created_at.desc()).all()
+    return {
+        "application_id": app.application_id,
+        "status": app.status,
+        "current_step": app.current_step,
+        "logs": app.logs or [],
+        "blocker": app.blocker,
+        "screenshot_path": app.screenshot_path,
+        "automation_runs": [
+            {
+                "run_id": run.run_id,
+                "status": run.status,
+                "logs": run.logs or [],
+                "screenshot_path": run.screenshot_path,
+                "error_message": run.error_message,
+                "created_at": run.created_at,
+                "updated_at": run.updated_at,
+            }
+            for run in runs
+        ],
+    }
+
 @router.get("/{application_id}/screenshot")
 def get_screenshot(application_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     app = get_application_record(application_id, db, user.user_id)
@@ -91,7 +119,7 @@ def get_screenshot(application_id: str, db: Session = Depends(get_db), user: Use
     allowed = (root / "screenshots" / user.user_id).resolve()
     if not path.is_relative_to(allowed) or not path.exists():
         raise HTTPException(404, "Screenshot not found")
-    return FileResponse(path)
+    return FileResponse(path, media_type="image/png")
 
 @router.patch("/{application_id}/review")
 def save_review(application_id: str, payload: ReviewUpdateIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -131,7 +159,7 @@ def start_automation(application_id: str, payload: AutomationStartIn, db: Sessio
     app.status = "READY_FOR_WORKER"
     app.current_step = "Queued for automation"
     app.blocker = None
-    append_logs(app, ["Application queued for worker automation."])
+    append_logs(app, ["Queued for automation.", "Application queued for worker automation."])
     job = db.query(Job).filter(Job.job_id == app.job_id, Job.user_id == user.user_id).first()
     if job: job.status = "READY_TO_APPLY"
     db.commit(); db.refresh(app)
@@ -168,8 +196,10 @@ def skip(application_id: str, db: Session = Depends(get_db), user: User = Depend
 def mark_blocked(application_id: str, payload: BlockerIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     app = get_application_record(application_id, db, user.user_id)
     blocker = payload.blocker.upper()
-    app.status = blocker if blocker in {"NEEDS_LOGIN", "NEEDS_CAPTCHA"} else "FAILED"
+    app.status = blocker if blocker in {"NEEDS_LOGIN", "NEEDS_CAPTCHA"} else "BLOCKED"
+    app.current_step = "Blocked by user"
     app.blocker = payload.notes or payload.blocker
+    append_logs(app, ["Marked blocked by user."])
     job = db.query(Job).filter(Job.job_id == app.job_id, Job.user_id == user.user_id).first()
     if job: job.status = app.status
     db.commit(); db.refresh(app)

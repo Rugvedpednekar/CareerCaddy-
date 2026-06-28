@@ -40,6 +40,7 @@ const CareerAPI = {
   prepareApplication: (jobId) => apiRequest(`/api/applications/${jobId}/prepare`, { method: "POST" }),
   getApplications: (filters = {}) => apiRequest(`/api/applications?${qs(filters)}`),
   getApplication: (applicationId) => apiRequest(`/api/applications/${applicationId}`),
+  getAutomationStatus: (applicationId) => apiRequest(`/api/applications/${applicationId}/automation-status`),
   getApplicationScreenshot: (applicationId) => apiRequest(`/api/applications/${applicationId}/screenshot`),
   markSubmitted: (applicationId) => apiRequest(`/api/applications/${applicationId}/mark-submitted`, { method: "POST" }),
   saveApplicationReview: (applicationId, generatedAnswers, notes = "") => apiRequest(`/api/applications/${applicationId}/review`, { method: "PATCH", body: JSON.stringify({ generated_answers: generatedAnswers, notes }) }),

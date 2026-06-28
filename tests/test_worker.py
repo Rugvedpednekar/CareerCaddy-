@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
-from backend.models import Application, Job, User
+from backend.models import Application, AutomationRun, Job, User
 import worker.worker as worker_module
 
 
@@ -56,7 +56,7 @@ class WorkerTests(unittest.TestCase):
         db.add_all([job, app, User(user_id="demo_user", email="ada@example.com")])
         db.commit(); db.close()
 
-        with patch.object(worker_module, "SessionLocal", factory), patch.object(worker_module, "create_tables"), patch.object(worker_module, "launch_browser", return_value=(FakePlaywright(), FakeBrowser())), patch.object(worker_module, "detect_blocker", return_value=None), patch.object(worker_module, "save_screenshot"), patch.dict(worker_module.HANDLERS, {"generic": FakeHandler}):
+        with patch.object(worker_module, "SessionLocal", factory), patch.object(worker_module, "create_tables"), patch.object(worker_module, "launch_browser", return_value=(FakePlaywright(), FakeBrowser())), patch.object(worker_module, "detect_blocker", return_value=None), patch.object(worker_module, "save_screenshot") as save_screenshot, patch.dict(worker_module.HANDLERS, {"generic": FakeHandler}):
             worker_module.run_once()
 
         check = factory()
@@ -64,8 +64,19 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(saved.status, "NEEDS_REVIEW")
         self.assertEqual(saved.current_step, "Prepared for review")
         self.assertIn("Worker started preparing application.", saved.logs)
+        self.assertIn("Opening application URL.", saved.logs)
+        self.assertIn("Page loaded successfully.", saved.logs)
+        self.assertIn("Detected portal: Generic.", saved.logs)
+        self.assertIn("Filling safe known fields.", saved.logs)
         self.assertIn("Stopped before final submission.", saved.logs)
         self.assertIn("Ready for user review.", saved.logs)
+        run = check.query(AutomationRun).filter_by(application_id="app_worker").one()
+        self.assertEqual(run.status, "NEEDS_REVIEW")
+        self.assertIn("Worker picked up application.", run.logs)
+        self.assertTrue(any("page_loaded" in log for log in run.logs))
+        self.assertTrue(any("after_fields_filled" in log for log in run.logs))
+        self.assertTrue(any("final_review_state" in log for log in run.logs))
+        self.assertEqual(save_screenshot.call_count, 3)
         check.close(); engine.dispose()
 
 
