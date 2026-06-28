@@ -18,6 +18,11 @@ class User(Base, TimestampMixin):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     user_id = Column(String(80), unique=True, index=True, nullable=False)
+    username = Column(String(80), unique=True, index=True)
+    full_name = Column(String(255))
+    profile_type = Column(String(255))
+    target_roles = Column(JSONType, default=list)
+    password_hash = Column(Text)
     first_name = Column(String(120))
     last_name = Column(String(120))
     email = Column(String(255))
@@ -31,6 +36,8 @@ class User(Base, TimestampMixin):
     graduation_date = Column(String(80))
     work_authorization = Column(String(255))
     sponsorship_answer = Column(Text)
+    availability = Column(String(255))
+    salary_expectation = Column(String(255))
 
 class Job(Base, TimestampMixin):
     __tablename__ = "jobs"
@@ -67,6 +74,8 @@ class Application(Base, TimestampMixin):
     resume_path = Column(Text)
     screenshot_path = Column(Text)
     generated_answers = Column(JSONType, default=dict)
+    generated_answer_sources = Column(JSONType, default=dict)
+    missing_fields = Column(JSONType, default=list)
     logs = Column(JSONType, default=list)
     blocker = Column(String(255))
     review_url = Column(Text)
@@ -80,6 +89,8 @@ class Resume(Base, TimestampMixin):
     file_name = Column(String(255), nullable=False)
     file_path = Column(Text, nullable=False)
     is_default = Column(Boolean, default=False)
+    parsed_resume_data = Column(JSONType)
+    parse_status = Column(String(40), default="Needs parsing")
 
 class AutomationRun(Base, TimestampMixin):
     __tablename__ = "automation_runs"

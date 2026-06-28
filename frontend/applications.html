@@ -37,7 +37,7 @@ tailwind.config = {
   }}
 }
 </script>
-<link href="/assets/styles.css?v=2" rel="stylesheet"/>
+<link href="/assets/styles.css?v=3" rel="stylesheet"/>
 
 </head>
 <body class="bg-background text-on-background min-h-screen flex font-body-md text-body-md">
@@ -105,7 +105,7 @@ tailwind.config = {
     ];
     function applicationCard(app){ const job = app.job || {}; const action = app.status === 'NEEDS_REVIEW' ? `<button data-start-automation="${escapeHTML(app.application_id)}" class="cc-button cc-button-secondary mt-3"><span class="material-symbols-outlined text-sm">smart_toy</span>Start Automation</button>` : ''; return `<div class="border border-outline-variant rounded-lg p-4 bg-surface-container-lowest"><div class="flex justify-between gap-3">${renderStatusBadge(app.status)}<span class="text-on-surface-variant text-sm">${formatDate(app.updated_at)}</span></div><h4 class="font-semibold mt-3">${escapeHTML(job.company||'Company')} - ${escapeHTML(job.title||'Role')}</h4><p class="text-on-surface-variant mt-1">Step: ${escapeHTML(app.current_step||'Pending')}</p><p class="text-on-surface-variant mt-1 truncate">Notes: ${escapeHTML((app.logs||[]).join(' | ') || app.blocker || 'No notes')}</p>${action}</div>`; }
     async function loadApps(){ try{ const apps = await CareerAPI.getApplications(); document.getElementById('app-groups').innerHTML = groups.map(({statuses,label}) => { const list = apps.filter(app => statuses.includes(app.status)); return `<section class="cc-card p-5"><h3 class="font-headline-md text-headline-md mb-4">${label}</h3><div class="space-y-3">${list.map(applicationCard).join('') || '<p class="text-on-surface-variant">None</p>'}</div></section>`; }).join(''); }catch(e){handleError(e);} }
-    document.getElementById('app-groups').onclick = async (event) => { const button = event.target.closest('[data-start-automation]'); if(!button) return; try{ await CareerAPI.startAutomation(button.dataset.startAutomation); showToast('Automation queued. Worker will prepare the form and stop before submission.'); loadApps(); }catch(e){handleError(e);} };
+    document.getElementById('app-groups').onclick = async (event) => { const button = event.target.closest('[data-start-automation]'); if(!button) return; try{ let result = await CareerAPI.startAutomation(button.dataset.startAutomation); if(result.requires_confirmation){ if(!confirm(`Missing important fields: ${result.missing_fields.join(', ')}. Queue automation anyway?`)) return; result = await CareerAPI.startAutomation(button.dataset.startAutomation, true); } if(result.queued){ showToast('Automation queued. Worker will prepare the form and stop before submission.'); loadApps(); } }catch(e){handleError(e);} };
     loadApps();
     </script>
 

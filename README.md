@@ -2,6 +2,8 @@
 
 CareerCaddy AI is a human-in-the-loop job application workspace. It helps users import jobs, score fit, select the right resume, prepare application forms, review generated answers, upload resumes, and track application status.
 
+The production workflow supports two isolated accounts (`rugved` and `bebu`). Passwords are supplied only through environment variables, hashed with PBKDF2 before storage, and never committed or logged. All jobs, applications, resumes, profile data, dashboard statistics, exports, and worker runs are scoped to the authenticated user.
+
 The app intentionally does not blind-submit applications. The Playwright worker can prepare a form and capture a screenshot, but it always stops before final submission and marks the application `NEEDS_REVIEW`. The user must manually review the application and click the UI control to mark it submitted.
 
 ## Architecture
@@ -31,7 +33,9 @@ For PostgreSQL, set `DATABASE_URL` in `.env`:
 DATABASE_URL=postgresql://postgres:password@localhost:5432/careercaddy
 ```
 
-Tables, the default `demo_user`, and upload folders are created automatically when the FastAPI app starts. The `/api/init-db` endpoint remains available as an optional debug endpoint, but it is not required for local or Railway startup.
+Tables, additive schema upgrades, seeded user records, and upload folders are handled automatically when FastAPI starts. The authenticated `/api/init-db` endpoint remains available for debugging but is never required for local or Railway startup.
+
+For local login, set `SESSION_SECRET_KEY`, `RUGVED_INITIAL_PASSWORD`, and `AKANSHA_INITIAL_PASSWORD` in `.env`. Existing password hashes are preserved on startup. In production, authentication is required for every application API except login and health checks.
 
 The Job Tracker supports public job links, pasted job-posting text, and manual entry. Link and text imports extract structured details, score the role, and save it automatically. Pages that require login, present a CAPTCHA, block automated access, or do not expose enough required fields fall back to manual import.
 
@@ -74,7 +78,9 @@ python worker/worker.py
 3. Connect this GitHub repository.
 4. Railway should inject `DATABASE_URL`.
 5. Set `GEMINI_API_KEY` only if you want Gemini-generated screening drafts.
-6. Deploy. On startup, CareerCaddy AI automatically creates database tables, upload folders, and the `demo_user` profile.
+6. Set `SESSION_SECRET_KEY`, `RUGVED_INITIAL_PASSWORD`, and `AKANSHA_INITIAL_PASSWORD` as Railway variables. Never commit their values.
+7. Set `APP_ENV=production`, `DEFAULT_USER_ID=rugved_pednekar`, and `UPLOAD_DIR=uploads`.
+8. Deploy. Startup performs additive schema upgrades, creates upload folders, and seeds missing user records without dropping data or replacing existing password hashes.
 7. The web process uses:
 
 ```text
@@ -87,7 +93,7 @@ The included `Procfile` also defines a worker process:
 worker: python worker/worker.py
 ```
 
-Configure the worker service with the same `DATABASE_URL`, `DEFAULT_USER_ID`, `UPLOAD_DIR`, and optional `GEMINI_API_KEY` as the web service. Set `APP_ENV=production`. The worker polls only `READY_FOR_WORKER` applications, fills safe known fields, captures a screenshot when possible, and always stops before final submission.
+Configure the worker service with the same `DATABASE_URL`, `SESSION_SECRET_KEY`, `UPLOAD_DIR`, and optional `GEMINI_API_KEY` as the web service. Set `APP_ENV=production`. The worker polls `READY_FOR_WORKER` applications for all users, fills safe known fields from that application owner only, captures a screenshot when possible, and always stops before final submission.
 
 Uploads are stored locally for the MVP. Railway filesystem storage is ephemeral and not durable across redeploys, so replace local uploads with S3, Cloudinary, or another persistent object store before production use.
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from ..config import DEFAULT_USER_ID
+from ..auth import get_current_user
 from ..database import get_db
 from ..models import User
 from ..schemas import ProfileIn
@@ -8,20 +8,13 @@ from ..schemas import ProfileIn
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
 @router.get("")
-def get_profile(db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.user_id == DEFAULT_USER_ID).first()
-    if not user:
-        user = User(user_id=DEFAULT_USER_ID, first_name="Demo", last_name="User", email="demo@example.com", work_authorization="Yes", sponsorship_answer="I am eligible to work in the U.S. on OPT and may require sponsorship in the future.")
-        db.add(user); db.commit(); db.refresh(user)
+def get_profile(user: User = Depends(get_current_user)):
     return user
 
 @router.post("")
-def save_profile(payload: ProfileIn, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.user_id == DEFAULT_USER_ID).first()
-    if not user:
-        user = User(user_id=DEFAULT_USER_ID)
-        db.add(user)
+def save_profile(payload: ProfileIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     for key, value in payload.model_dump().items():
         setattr(user, key, value)
+    user.full_name = " ".join(value for value in (user.first_name, user.last_name) if value).strip() or user.full_name
     db.commit(); db.refresh(user)
     return user

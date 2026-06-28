@@ -44,12 +44,26 @@ function initializeSidebarActiveState() {
   const active = document.querySelector("main")?.dataset.activeNav;
   document.querySelectorAll(`[data-nav="${active}"]`).forEach((a) => a.classList.add("active"));
 }
+function initializeAuthenticatedShell() {
+  if (location.pathname.endsWith('/login.html')) return;
+  const user = JSON.parse(localStorage.getItem('career_caddy_user') || 'null');
+  const sidebar = document.querySelector('aside > div:last-child');
+  if (!sidebar || !user) return;
+  const identity = document.createElement('div');
+  identity.className = 'px-3 py-2 mb-1 text-on-surface-variant';
+  identity.innerHTML = `<p class="font-medium text-on-surface truncate">${escapeHTML(user.full_name || user.username)}</p><p class="text-xs truncate">${escapeHTML(user.profile_type || '')}</p>`;
+  const logout = document.createElement('button');
+  logout.className = 'nav-link w-full';
+  logout.innerHTML = '<span class="material-symbols-outlined">logout</span><span>Logout</span>';
+  logout.onclick = async () => { try { await CareerAPI.logout(); } catch (_) {} localStorage.removeItem('career_caddy_token'); localStorage.removeItem('career_caddy_user'); location.replace('/login.html'); };
+  sidebar.prepend(identity); sidebar.appendChild(logout);
+}
 function bindImportButtons() {
   document.querySelectorAll("[data-open-import]").forEach((button) => button.addEventListener("click", () => {
     window.location.href = "/jobs.html#import";
   }));
 }
-document.addEventListener("DOMContentLoaded", () => { initializeSidebarActiveState(); bindImportButtons(); });
+document.addEventListener("DOMContentLoaded", () => { initializeSidebarActiveState(); bindImportButtons(); initializeAuthenticatedShell(); });
 window.renderStatusBadge = renderStatusBadge;
 window.formatDate = formatDate;
 window.showToast = showToast;

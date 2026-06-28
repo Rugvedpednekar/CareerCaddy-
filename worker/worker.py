@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.config import BASE_DIR, DEFAULT_USER_ID, UPLOAD_DIR
+from backend.config import BASE_DIR, UPLOAD_DIR
 from backend.database import SessionLocal, create_tables
 from backend.models import Application, AutomationRun, Job, Resume, User, uid
 from worker.browser import launch_browser, save_screenshot
@@ -18,8 +18,11 @@ HANDLERS = {"greenhouse": greenhouse, "lever": lever, "generic": generic}
 def asdict(obj):
     return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
 
-def best_resume(db, resume_type):
-    resume = db.query(Resume).filter(Resume.user_id == DEFAULT_USER_ID, Resume.resume_type == resume_type).order_by(Resume.created_at.desc()).first()
+def best_resume(db, user_id, resume_type):
+    query = db.query(Resume).filter(Resume.user_id == user_id)
+    resume = query.filter(Resume.resume_type == resume_type).order_by(Resume.created_at.desc()).first()
+    resume = resume or query.filter(Resume.is_default.is_(True)).order_by(Resume.created_at.desc()).first()
+    resume = resume or query.order_by(Resume.created_at.desc()).first()
     return resume.file_path if resume else None
 
 def append_log(app, message):
@@ -33,17 +36,16 @@ def run_once():
     pw = browser = None
     try:
         applications = db.query(Application).filter(
-            Application.user_id == DEFAULT_USER_ID,
             Application.status == "READY_FOR_WORKER",
         ).limit(5).all()
         if not applications:
             print("No READY_FOR_WORKER applications found.")
             return
-        profile = db.query(User).filter(User.user_id == DEFAULT_USER_ID).first() or User(user_id=DEFAULT_USER_ID)
         pw, browser = launch_browser()
         for app in applications:
-            job = db.query(Job).filter(Job.job_id == app.job_id, Job.user_id == DEFAULT_USER_ID).first()
-            run = AutomationRun(run_id=uid("run"), user_id=DEFAULT_USER_ID, job_id=app.job_id, application_id=app.application_id, status="IN_PROGRESS", logs=[])
+            profile = db.query(User).filter(User.user_id == app.user_id).first() or User(user_id=app.user_id)
+            job = db.query(Job).filter(Job.job_id == app.job_id, Job.user_id == app.user_id).first()
+            run = AutomationRun(run_id=uid("run"), user_id=app.user_id, job_id=app.job_id, application_id=app.application_id, status="IN_PROGRESS", logs=[])
             db.add(run)
             app.status = "IN_PROGRESS"
             app.current_step = "Worker preparing form"
@@ -80,14 +82,19 @@ def run_once():
                 else:
                     portal = detect_portal(job.apply_url or job.portal or "")
                     handler = HANDLERS.get(portal, generic)
-                    resume_path = best_resume(db, job.resume_version or "SWE")
+                    resume_path = best_resume(db, app.user_id, job.resume_version or "SWE")
                     automation_profile = asdict(profile)
                     answers = dict(app.generated_answers or {})
                     for key in ("email", "phone", "location", "linkedin", "github", "portfolio"):
                         automation_profile[key] = answers.get(key) or automation_profile.get(key)
+                    full_name = answers.get("full_name", "")
+                    if full_name and "Please fill" not in full_name:
+                        parts = full_name.split(None, 1)
+                        automation_profile["first_name"] = parts[0]
+                        automation_profile["last_name"] = parts[1] if len(parts) > 1 else automation_profile.get("last_name")
                     result = handler.prepare_application(page, asdict(job), automation_profile, resume_path)
                     screenshot_dir = UPLOAD_DIR if UPLOAD_DIR.is_absolute() else BASE_DIR / UPLOAD_DIR
-                    screenshot_path = screenshot_dir / "screenshots" / DEFAULT_USER_ID / f"{app.application_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.png"
+                    screenshot_path = screenshot_dir / "screenshots" / app.user_id / f"{app.application_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.png"
                     save_screenshot(page, screenshot_path)
                     for log in result.get("logs", []):
                         append_log(app, log)

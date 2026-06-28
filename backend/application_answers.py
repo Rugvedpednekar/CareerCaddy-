@@ -49,36 +49,43 @@ def _strict_json(text: str) -> dict[str, Any]:
 
 
 def generate_application_answers(job: Any, profile: Any) -> dict[str, str]:
-    first_name = (_value(profile, "first_name") or "").strip()
-    last_name = (_value(profile, "last_name") or "").strip()
-    full_name = " ".join(value for value in (first_name, last_name) if value)
+    full_name = (_value(profile, "full_name") or "").strip()
+    if not full_name:
+        first_name = (_value(profile, "first_name") or "").strip()
+        last_name = (_value(profile, "last_name") or "").strip()
+        full_name = " ".join(value for value in (first_name, last_name) if value)
     company = (_value(job, "company") or "the company").strip()
     title = (_value(job, "title") or "this role").strip()
-    skills = _value(job, "required_skills", []) or []
-    skills = [str(skill).strip() for skill in skills if str(skill).strip()][:8]
-    skills_text = ", ".join(skills)
+    job_skills = [str(skill).strip() for skill in (_value(job, "required_skills", []) or []) if str(skill).strip()]
+    candidate_skills = [str(skill).strip() for skill in (_value(profile, "skills", []) or []) if str(skill).strip()]
+    matched_skills = [skill for skill in job_skills if skill.lower() in {value.lower() for value in candidate_skills}]
+    skills_text = ", ".join(matched_skills[:8] or job_skills[:8])
     resume_version = (_value(job, "resume_version") or "SWE").strip()
     sponsorship = (_value(profile, "sponsorship_answer") or "").strip()
     work_auth = (_value(profile, "work_authorization") or "").strip()
     salary = _salary(job)
+    experience = _value(profile, "experience", []) or []
+    projects = _value(profile, "projects", []) or []
+    relevant = " ".join(str(value) for value in (experience[:2] or projects[:2]))[:900]
+    manual = "Please fill manually."
 
     answers = {
-        "full_name": full_name,
-        "email": (_value(profile, "email") or "").strip(),
-        "phone": (_value(profile, "phone") or "").strip(),
-        "location": (_value(profile, "location") or "").strip(),
-        "linkedin": (_value(profile, "linkedin") or "").strip(),
-        "github": (_value(profile, "github") or "").strip(),
-        "portfolio": (_value(profile, "portfolio") or "").strip(),
-        "work_authorization": work_auth,
+        "full_name": full_name or manual,
+        "email": (_value(profile, "email") or manual).strip(),
+        "phone": (_value(profile, "phone") or manual).strip(),
+        "location": (_value(profile, "location") or manual).strip(),
+        "linkedin": (_value(profile, "linkedin") or manual).strip(),
+        "github": (_value(profile, "github") or manual).strip(),
+        "portfolio": (_value(profile, "portfolio") or manual).strip(),
+        "work_authorization": work_auth or manual,
         "resume_version": resume_version,
         "why_interested": f"I am interested in the {title} opportunity at {company}. Please tailor this response to the role before submitting.",
-        "why_good_fit": f"My {resume_version} resume is selected for review against this role's requirements. Please add only verified experience before submitting.",
-        "relevant_experience": "Please fill manually.",
-        "skills_match": f"Key skills to address: {skills_text}." if skills_text else "Please fill manually.",
-        "availability": "Please fill manually.",
+        "why_good_fit": f"My background includes {', '.join(matched_skills[:6])}, which aligns with this role's requirements." if matched_skills else manual,
+        "relevant_experience": relevant or manual,
+        "skills_match": f"Matching skills: {', '.join(matched_skills[:8])}." if matched_skills else (f"Job skills to verify: {skills_text}." if skills_text else manual),
+        "availability": (_value(profile, "availability") or manual).strip(),
         "sponsorship_answer": sponsorship or work_auth or "Please verify manually.",
-        "salary_expectation": f"Job range for review: {salary}." if salary else "Please fill manually.",
+        "salary_expectation": (_value(profile, "salary_expectation") or (f"Job range for review: {salary}." if salary else manual)).strip(),
         "notes_for_review": "Please verify all answers before submitting.",
     }
 
@@ -102,3 +109,28 @@ CURRENT ANSWERS: {json.dumps(answers)}"""
             pass
 
     return {key: str(answers.get(key) or "") for key in ANSWER_KEYS}
+
+
+def generate_answer_package(job: Any, db, user_id: str) -> dict[str, Any]:
+    from .candidate_context import build_candidate_context
+
+    context = build_candidate_context(db, user_id, _value(job, "resume_version", None))
+    candidate = context["candidate"]
+    answers = generate_application_answers(job, candidate)
+    sources = dict(context["sources"])
+    resume_source = "resume_and_job_description" if context["resume_loaded"] else "manual_required"
+    sources.update({
+        "resume_version": "job_scoring",
+        "why_interested": "resume_and_job_description" if context["resume_loaded"] else "profile_and_job_description",
+        "why_good_fit": resume_source,
+        "relevant_experience": "resume" if candidate.get("experience") or candidate.get("projects") else "manual_required",
+        "skills_match": resume_source,
+        "sponsorship_answer": sources.get("work_authorization", "manual_required"),
+        "salary_expectation": context["sources"].get("salary_expectation", "job_description" if _salary(job) else "manual_required"),
+        "notes_for_review": "system",
+    })
+    if context["resume"]:
+        answers["resume_version"] = context["resume"].resume_type
+        sources["resume_version"] = "resume"
+    missing = sorted(set(context["missing_fields"] + [key for key, value in answers.items() if value in {"Please fill manually.", "Please verify manually."}]))
+    return {"answers": answers, "sources": sources, "missing_fields": missing, "resume": context["resume"], "resume_loaded": context["resume_loaded"]}

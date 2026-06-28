@@ -37,7 +37,7 @@ tailwind.config = {
   }}
 }
 </script>
-<link href="/assets/styles.css" rel="stylesheet"/>
+<link href="/assets/styles.css?v=3" rel="stylesheet"/>
 
 </head>
 <body class="bg-background text-on-background min-h-screen flex font-body-md text-body-md">
@@ -89,8 +89,8 @@ tailwind.config = {
     <div class="p-gutter max-w-container-max mx-auto w-full space-y-unit-lg">
       <div><h2 class="font-headline-lg text-headline-lg mb-2">Resumes</h2><p class="font-body-lg text-body-lg text-on-surface-variant">Upload resume versions for SWE, data, and support roles.</p></div>
       <form id="resume-form" class="cc-card p-5 flex flex-col md:flex-row gap-3 items-end">
-        <div class="w-full"><label class="font-label-md text-label-md uppercase text-on-surface-variant">Resume Type</label><select id="resume-type" class="cc-input mt-1"><option>SWE</option><option>DATA_ANALYST</option><option>SUPPORT_ENGINEER</option></select></div>
-        <div class="w-full"><label class="font-label-md text-label-md uppercase text-on-surface-variant">File</label><input id="resume-file" type="file" class="cc-input mt-1" required></div>
+        <div class="w-full"><label class="font-label-md text-label-md uppercase text-on-surface-variant">Resume Version</label><select id="resume-type" class="cc-input mt-1"><option>SWE</option><option>DATA_ANALYST</option><option>SUPPORT_ENGINEER</option><option>HR</option><option>ORG_PSYCH</option><option>RESEARCH</option></select></div>
+        <div class="w-full"><label class="font-label-md text-label-md uppercase text-on-surface-variant">File</label><input id="resume-file" type="file" accept=".pdf,.docx,.txt" class="cc-input mt-1" required></div>
         <button class="cc-button cc-button-primary min-w-36"><span class="material-symbols-outlined text-sm">upload_file</span>Upload</button>
       </form>
       <div class="cc-card overflow-hidden"><div id="resume-list" class="divide-y divide-outline-variant"></div></div>
@@ -102,9 +102,10 @@ tailwind.config = {
 <script src="/assets/app.js"></script>
 
     <script>
-    async function loadResumes(){ try{ const resumes = await CareerAPI.getResumes(); document.getElementById('resume-list').innerHTML = resumes.map(r => `<div class="p-4 flex items-center justify-between"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-error">picture_as_pdf</span><div><p class="font-medium">${r.file_name}</p><p class="text-on-surface-variant text-sm">${r.resume_type} - ${formatDate(r.created_at)}</p></div></div><button data-id="${r.resume_id}" class="cc-button cc-button-danger">Delete</button></div>`).join('') || '<div class="p-8 text-center text-on-surface-variant">No resumes uploaded.</div>'; }catch(e){handleError(e);} }
+    function resumeCard(r){ const data = r.parsed_resume_data || {}; const skills = (data.skills||[]).slice(0,8).join(', ') || 'No skills extracted'; return `<article class="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"><div class="flex items-start gap-3 min-w-0"><span class="material-symbols-outlined text-primary">description</span><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><p class="font-medium truncate">${escapeHTML(r.file_name)}</p>${r.is_default ? '<span class="status-badge bg-primary-fixed text-on-primary-fixed">Default</span>' : ''}<span class="status-badge bg-surface-container-high text-on-surface-variant">${escapeHTML(r.parse_status || 'Needs parsing')}</span></div><p class="text-on-surface-variant text-sm mt-1">${escapeHTML(r.resume_type)} · ${formatDate(r.created_at)}</p><p class="text-sm mt-2">${escapeHTML(data.email || 'Email not found')} · ${escapeHTML(data.phone || 'Phone not found')}</p><p class="text-on-surface-variant text-sm truncate">${escapeHTML(data.linkedin || data.github || 'No profile links extracted')}</p><p class="text-on-surface-variant text-sm mt-1">Top skills: ${escapeHTML(skills)}</p></div></div><div class="flex flex-wrap gap-2"><button data-act="default" data-id="${escapeHTML(r.resume_id)}" class="cc-button cc-button-secondary">Set as Default</button><button data-act="parse" data-id="${escapeHTML(r.resume_id)}" class="cc-button cc-button-secondary">Re-parse Resume</button><button data-act="delete" data-id="${escapeHTML(r.resume_id)}" class="cc-button cc-button-danger">Delete</button></div></article>`; }
+    async function loadResumes(){ try{ const resumes = await CareerAPI.getResumes(); document.getElementById('resume-list').innerHTML = resumes.map(resumeCard).join('') || '<div class="p-8 text-center text-on-surface-variant">No resumes uploaded.</div>'; }catch(e){handleError(e);} }
     document.getElementById('resume-form').onsubmit = async (e) => { e.preventDefault(); const file = document.getElementById('resume-file').files[0]; try{ await CareerAPI.uploadResume(file, document.getElementById('resume-type').value); showToast('Resume uploaded.'); e.target.reset(); loadResumes(); }catch(err){handleError(err);} };
-    document.getElementById('resume-list').onclick = async (e) => { const b = e.target.closest('button[data-id]'); if(!b) return; try{ await CareerAPI.deleteResume(b.dataset.id); showToast('Resume deleted.'); loadResumes(); }catch(err){handleError(err);} };
+    document.getElementById('resume-list').onclick = async (e) => { const b = e.target.closest('button[data-id]'); if(!b) return; try{ if(b.dataset.act === 'default') await CareerAPI.setDefaultResume(b.dataset.id); if(b.dataset.act === 'parse') await CareerAPI.parseResume(b.dataset.id); if(b.dataset.act === 'delete' && confirm('Delete this resume?')) await CareerAPI.deleteResume(b.dataset.id); showToast(b.dataset.act === 'delete' ? 'Resume deleted.' : 'Resume updated.'); loadResumes(); }catch(err){handleError(err);} };
     loadResumes();
     </script>
 

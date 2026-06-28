@@ -13,3 +13,5 @@ aiofiles
 beautifulsoup4
 lxml
 httpx
+pypdf
+python-docx

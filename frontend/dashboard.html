@@ -37,7 +37,7 @@ tailwind.config = {
   }}
 }
 </script>
-<link href="/assets/styles.css" rel="stylesheet"/>
+<link href="/assets/styles.css?v=3" rel="stylesheet"/>
 
 </head>
 <body class="bg-background text-on-background min-h-screen flex font-body-md text-body-md">
@@ -89,9 +89,8 @@ tailwind.config = {
     <div class="p-gutter max-w-container-max mx-auto w-full flex-1 space-y-unit-lg pb-24">
       <div class="flex justify-between items-end mb-6">
         <div><h2 class="font-headline-lg text-headline-lg text-on-surface">Good Morning</h2><p class="font-body-lg text-body-lg text-on-surface-variant">Here's the status of your job search pipeline.</p></div>
-        <button id="init-db" class="cc-button cc-button-secondary"><span class="material-symbols-outlined text-sm">database</span>Init DB</button>
       </div>
-      <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="stats-grid"></section>
+      <section class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4" id="stats-grid"></section>
       <section class="cc-card p-6">
         <h3 class="font-headline-md text-headline-md text-on-surface mb-6">Today's Application Pipeline</h3>
         <div class="relative flex items-center justify-between w-full overflow-x-auto py-2">
@@ -128,16 +127,15 @@ tailwind.config = {
 
     <script>
     const statMeta = [
-      ["total_found","search","Total Found"],["ready_to_apply","task_alt","Ready to Apply"],["needs_review","warning","Needs Review"],["submitted","send","Submitted"],["failed_blocked","block","Failed/Blocked"],["average_fit_score","analytics","Avg Fit Score"]
+      ["total_found","search","Total Jobs"],["scored","analytics","Scored"],["ready_to_apply","task_alt","Ready"],["applications_in_review","warning","In Review"],["submitted_applications","check_circle","Submitted"],["failed_applications","block","Failed"],["resumes_uploaded","description","Resumes"],["profile_completeness","person_check","Profile"]
     ];
     async function loadDashboard(){
       try{
         const stats = await CareerAPI.getStats();
-        document.getElementById("stats-grid").innerHTML = statMeta.map(([key,icon,label]) => `<div class="cc-card p-4 hover:bg-surface-container-low transition-colors group"><div class="flex items-center gap-2 mb-2 text-on-surface-variant group-hover:text-primary"><span class="material-symbols-outlined text-[20px]">${icon}</span><span class="font-label-md text-label-md uppercase tracking-wider">${label}</span></div><div class="font-headline-lg text-headline-lg ${key === "needs_review" ? "text-tertiary" : key === "failed_blocked" ? "text-error" : "text-on-surface"}">${stats[key] ?? 0}${key === "average_fit_score" ? "%" : ""}</div></div>`).join("");
+        document.getElementById("stats-grid").innerHTML = statMeta.map(([key,icon,label]) => `<div class="cc-card p-4 hover:bg-surface-container-low transition-colors group"><div class="flex items-center gap-2 mb-2 text-on-surface-variant group-hover:text-primary"><span class="material-symbols-outlined text-[20px]">${icon}</span><span class="font-label-md text-label-md uppercase tracking-wider">${label}</span></div><div class="font-headline-lg text-headline-lg ${key === "applications_in_review" ? "text-tertiary" : key === "failed_applications" ? "text-error" : "text-on-surface"}">${stats[key] ?? 0}${key === "profile_completeness" ? "%" : ""}</div></div>`).join("");
         document.getElementById("review-title").textContent = `Review ${stats.needs_review || 0} Prepared Applications`;
       } catch(e) { handleError(e); }
     }
-    document.getElementById("init-db").onclick = async () => { try { await CareerAPI.initDb(); showToast("Database tables are ready."); loadDashboard(); } catch(e) { handleError(e); } };
     document.getElementById("export").onclick = () => CareerAPI.exportExcel();
     loadDashboard();
     </script>

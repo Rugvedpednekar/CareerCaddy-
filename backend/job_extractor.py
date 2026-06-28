@@ -28,6 +28,8 @@ SKILL_TERMS = (
     "Redis", "REST APIs", "Linux", "Git", "GitHub Actions", "CI/CD", "ServiceNow",
     "troubleshooting", "data pipelines", "ETL", "machine learning", "distributed systems",
     "microservices",
+    "deep learning", "data analysis", "Excel", "SPSS", "research", "survey design",
+    "organizational psychology", "HR", "talent acquisition", "employee engagement", "people operations",
 )
 
 

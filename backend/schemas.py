@@ -65,6 +65,9 @@ class ProfileIn(BaseModel):
     graduation_date: str | None = None
     work_authorization: str | None = None
     sponsorship_answer: str | None = None
+    availability: str | None = None
+    salary_expectation: str | None = None
+    target_roles: list[str] | None = None
 
 class BlockerIn(BaseModel):
     blocker: str = "FAILED"
@@ -73,3 +76,6 @@ class BlockerIn(BaseModel):
 class ReviewUpdateIn(BaseModel):
     generated_answers: dict[str, Any]
     notes: str | None = None
+
+class AutomationStartIn(BaseModel):
+    confirm_missing: bool = False

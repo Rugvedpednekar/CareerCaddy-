@@ -7,6 +7,10 @@ CLEARANCE = ["u.s. citizen only", "security clearance required", "active clearan
 
 def select_resume(title: str, description: str) -> str:
     text = f"{title} {description}".lower()
+    if any(k in text for k in ["organizational psychology", "i/o psychology", "research assistant", "survey design", "spss"]):
+        return "ORG_PSYCH"
+    if any(k in text for k in ["human resources", "hr intern", "people operations", "talent acquisition", "employee experience"]):
+        return "HR"
     if any(k in text for k in ["data analyst", "data engineer", " bi ", "analytics", "reporting"]):
         return "DATA_ANALYST"
     if any(k in text for k in ["support engineer", "sre", "production support", "incident", "troubleshooting"]):

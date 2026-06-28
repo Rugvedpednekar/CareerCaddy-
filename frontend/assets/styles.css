@@ -15,6 +15,7 @@
 .status-badge { display:inline-flex; align-items:center; border-radius:9999px; padding:.25rem .5rem; font-size:11px; font-weight:600; border:1px solid transparent; }
 .custom-scrollbar::-webkit-scrollbar { width:6px; height:6px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background:#c2c6d6; border-radius:20px; }
+body > main { min-width:0; width:100%; }
 @media (max-width: 767px) { .nav-link.active { border-right:0; } }
 @media (min-width: 768px) {
   body > main { flex: none; min-width: 0; width: calc(100% - 260px); }
