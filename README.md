@@ -139,7 +139,7 @@ Supported handlers are Greenhouse, Lever, Workday, LinkedIn Easy Apply, and a ge
 
 ## Railway Setup
 
-1. Create a Railway project.
+1. Create a Railway project. Railway uses the included official Playwright Docker image, which contains Chromium and its Linux system dependencies.
 2. Add a PostgreSQL service.
 3. Connect this GitHub repository.
 4. Railway should inject `DATABASE_URL`.
@@ -160,6 +160,14 @@ worker: python worker/worker.py
 ```
 
 Configure the worker service with the same `DATABASE_URL`, `SESSION_SECRET_KEY`, `UPLOAD_DIR`, and optional `GEMINI_API_KEY` as the web service. Set `APP_ENV=production`. The worker polls `READY_FOR_WORKER` applications for all users, fills safe known fields from that application owner only, captures a screenshot when possible, and always stops before final submission.
+
+Set the Railway worker service start command to exactly:
+
+```text
+python worker/worker.py
+```
+
+Do not use `playwright install` as a Railway pre-deploy or start command. The Docker image and `playwright==1.60.0` package are version-matched, and the browser executable is already stored at `/ms-playwright` inside the runtime image rather than the disposable `/root/.cache/ms-playwright` build cache.
 
 Uploads are stored locally for the MVP. Railway filesystem storage is ephemeral and not durable across redeploys, so replace local uploads with S3, Cloudinary, or another persistent object store before production use.
 
