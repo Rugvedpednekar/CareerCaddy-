@@ -6,6 +6,8 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 APP_ENV = os.getenv("APP_ENV", "development")
+WORKER_HEADLESS = os.getenv("WORKER_HEADLESS", "true").lower() != "false"
+IS_RAILWAY = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID"))
 DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "demo_user")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 SESSION_SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "")
