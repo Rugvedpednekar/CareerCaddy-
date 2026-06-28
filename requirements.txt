@@ -7,7 +7,7 @@ pydantic
 python-multipart
 openpyxl
 pandas
-playwright
+playwright==1.60.0
 google-genai
 google-auth
 google-auth-oauthlib
