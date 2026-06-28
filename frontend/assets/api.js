@@ -30,6 +30,7 @@ const CareerAPI = {
   logout: () => apiRequest("/api/auth/logout", { method: "POST" }),
   getStats: () => apiRequest("/api/dashboard/stats"),
   getJobs: (filters = {}) => apiRequest(`/api/jobs?${qs(filters)}`),
+  runAgent: (jobId) => apiRequest(`/api/agent/run/${jobId}`, { method: "POST", headers: {"Accept": "text/event-stream"} }),
   importJob: (job) => apiRequest("/api/jobs/import", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(job) }),
   extractJobFromUrl: (url) => apiRequest("/api/jobs/extract", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ url }) }),
   extractJobFromText: (jobText, applyUrl) => apiRequest("/api/jobs/extract-text", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ job_text: jobText, apply_url: applyUrl || null }) }),

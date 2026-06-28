@@ -4,7 +4,7 @@ CareerCaddy AI is a human-in-the-loop job application workspace. It helps users 
 
 The production workflow supports two isolated accounts (`rugved` and `bebu`). Passwords are supplied only through environment variables, hashed with PBKDF2 before storage, and never committed or logged. All jobs, applications, resumes, profile data, dashboard statistics, exports, and worker runs are scoped to the authenticated user.
 
-The app intentionally does not blind-submit applications. The Playwright worker can prepare a form and capture a screenshot, but it always stops before final submission and marks the application `NEEDS_REVIEW`. The user must manually review the application and click the UI control to mark it submitted.
+The Railway Playwright worker intentionally does not submit applications. An optional local-only headed agent can use the user's persistent Chrome session and submit only after the user reviews a screenshot and types `YES` in the local terminal.
 
 ## Architecture
 
@@ -61,6 +61,72 @@ Run the worker:
 python worker/worker.py
 ```
 
+## Local Headed Application Agent
+
+The local agent is separate from the Railway worker. It launches visible Chrome with an app-specific persistent user-data directory, so portal cookies survive between runs. The API rejects agent runs when `APP_ENV=production` or Railway environment variables are present.
+
+Install Chrome and the Python dependencies, then configure `.env`:
+
+```text
+APP_ENV=development
+CAREERCADDY_CHROME_USER_DATA_DIR=~/.careercaddy/chrome-profile
+CAREERCADDY_BROWSER_CHANNEL=chrome
+PORTAL_CREDENTIALS_FILE=~/.careercaddy/portal_credentials.enc
+GMAIL_OAUTH_CLIENT_FILE=~/.careercaddy/gmail_credentials.json
+GMAIL_OAUTH_TOKEN_FILE=~/.careercaddy/gmail_token.json
+```
+
+Generate a Fernet key once and place only the key in the local `.env` file:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Set it as `PORTAL_CREDENTIALS_KEY`, then save a portal login without putting the password in shell history or the database:
+
+```bash
+python -m agent.credential_store greenhouse
+python -m agent.credential_store lever
+python -m agent.credential_store workday
+python -m agent.credential_store linkedin
+```
+
+The encrypted credential file and Fernet key must remain local. Do not commit either one. If a saved session is already logged in, credentials are not required.
+
+### Gmail OTP OAuth
+
+1. Create a Google Cloud project and enable the Gmail API.
+2. Configure an OAuth consent screen for a Desktop app.
+3. Download the OAuth client JSON to `~/.careercaddy/gmail_credentials.json` or the path in `GMAIL_OAUTH_CLIENT_FILE`.
+4. Start an agent run. The first OTP request opens Google's local OAuth consent flow with the read-only Gmail scope.
+5. The resulting refresh token is written to `GMAIL_OAUTH_TOKEN_FILE`; keep that file private and never commit it.
+
+The OTP reader checks recent unread messages from the portal domain for subjects containing OTP, verification code, or confirm. It never logs codes and cannot modify email. If no code is found after five checks, the terminal asks for manual entry.
+
+### Running the agent
+
+Start FastAPI from a local interactive terminal:
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+Open Job Tracker and click **🤖 Auto-Apply**. The page displays the streamed states `navigating`, `logging_in`, `otp_waiting`, `filling_fields`, `awaiting_confirmation`, `submitted`, or `failed`.
+
+At the final gate, CareerCaddy saves and opens a screenshot while leaving the headed browser visible. The terminal accepts:
+
+- `YES`: click the final Submit/Apply control.
+- `NO`: abort without submitting.
+- `EDIT`: leave the browser open for manual corrections and ask again.
+
+You can also run the same pipeline directly:
+
+```bash
+python -m agent.orchestrator JOB_ID --user-id YOUR_USER_ID
+```
+
+Supported handlers are Greenhouse, Lever, Workday, LinkedIn Easy Apply, and a generic label-based fallback. Open-shadow-root fields are handled by Playwright locators. CAPTCHAs and human-verification challenges are never bypassed; they stop the run for manual action.
+
 ## Demo Flow
 
 1. Open the dashboard.
@@ -101,4 +167,8 @@ Railway sometimes provides PostgreSQL URLs beginning with `postgres://`; the app
 
 ## Safety
 
-CareerCaddy AI never clicks final submit. Automation only prepares forms, saves screenshots, and moves records to `NEEDS_REVIEW`.
+- The Railway worker never clicks final submit; it only prepares forms and moves applications to `NEEDS_REVIEW`.
+- The local headed agent can click final submit only after the confirmation gate receives the exact terminal response `YES`.
+- CAPTCHAs, paywalls, access controls, and human-verification checks are never bypassed.
+- Portal passwords are stored only in the encrypted local credential file, never in PostgreSQL or application logs.
+- Gmail access uses the read-only scope, and OTP values are never logged or persisted.
